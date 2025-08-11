@@ -4,6 +4,16 @@ export interface CROAnalysis {
   improvementsSummary: string
 }
 
+// Database table interface that matches Supabase
+export interface ReportRecord {
+  id?: number
+  full_url: string
+  date_generated: string
+  pageSummary: string
+  recommendedImprovements: string[]
+  improvementsSummary: string
+}
+
 // For the Gemini API schema
 export const geminiCROSchema = {
   type: 'object' as const,

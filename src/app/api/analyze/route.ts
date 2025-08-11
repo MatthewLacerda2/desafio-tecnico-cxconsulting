@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
-import { geminiCROSchema, CROAnalysis } from '@/types/cro'
+import { geminiCROSchema, CROAnalysis, ReportRecord } from '@/types/cro'
+import { createServerSupabaseClient } from '@/lib/supabase'
 import { type DoclingDocument } from '@docling/docling-core';
 
 async function fetchConversion(url: string) {
@@ -88,26 +89,70 @@ Please provide a comprehensive CRO analysis based on the content above. Be succi
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-          responseSchema: geminiCROSchema  // Use the static schema object
+          responseSchema: geminiCROSchema
         }
       })
 
       console.log("Resultado aqui")
       console.log(geminiResult)
       
-      const croAnalysis = geminiResult.text
+      // Parse the AI response
+      let croAnalysis: CROAnalysis
+      try {
+        croAnalysis = JSON.parse(geminiResult.text as string)
+      } catch (parseError) {
+        console.error('Failed to parse AI response:', parseError)
+        return NextResponse.json(
+          { error: 'Failed to parse AI analysis response' },
+          { status: 500 }
+        )
+      }
 
       console.log("CroAnalysis aqui")
       console.log(croAnalysis)
       
-      // TODO: Store results in Supabase
-      // TODO: Return analysis results
-      
-      return NextResponse.json({ 
-        message: 'Analysis completed',
-        url: url,
-        analysis: croAnalysis
-      })
+      // Save to Supabase
+      try {
+        const supabase = createServerSupabaseClient()
+        
+        const reportData: ReportRecord = {
+          full_url: url,
+          date_generated: new Date().toISOString().split('T')[0], // Format as YYYY-MM-DD
+          pageSummary: croAnalysis.pageSummary,
+          recommendedImprovements: croAnalysis.recommendedImprovements,
+          improvementsSummary: croAnalysis.improvementsSummary
+        }
+        
+        const { data, error } = await supabase
+          .from('reports')
+          .insert(reportData)
+          .select()
+          .single()
+        
+        if (error) {
+          console.error('Supabase insert error:', error)
+          return NextResponse.json(
+            { error: 'Failed to save analysis to database' },
+            { status: 500 }
+          )
+        }
+        
+        console.log('Saved to Supabase:', data)
+        
+        return NextResponse.json({ 
+          message: 'Analysis completed and saved',
+          url: url,
+          analysis: croAnalysis,
+          reportId: data.id
+        })
+        
+      } catch (dbError) {
+        console.error('Database error:', dbError)
+        return NextResponse.json(
+          { error: 'Failed to save analysis to database' },
+          { status: 500 }
+        )
+      }
 
     } catch (aiError) {
       console.error('AI analysis error:', aiError)
