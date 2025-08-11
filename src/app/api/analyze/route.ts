@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { geminiCROSchema, CROAnalysis, ReportRecord } from '@/types/cro'
 import { createServerSupabaseClient } from '@/lib/supabase'
-import { type DoclingDocument } from '@docling/docling-core';
 
 async function fetchConversion(url: string) {
   const response = await fetch(url, {
@@ -131,10 +130,6 @@ Please provide a comprehensive CRO analysis based on the content above. Be succi
         
         if (error) {
           console.error('Supabase insert error:', error)
-          return NextResponse.json(
-            { error: 'Failed to save analysis to database in error at line 135' },
-            { status: 500 }
-          )
         }
         
         console.log('Saved to Supabase:', data)
@@ -156,10 +151,6 @@ Please provide a comprehensive CRO analysis based on the content above. Be succi
 
     } catch (aiError) {
       console.error('AI analysis error:', aiError)
-      return NextResponse.json(
-        { error: 'Failed to analyze webpage content with AI' },
-        { status: 500 }
-      )
     }
 
   } catch (error) {
