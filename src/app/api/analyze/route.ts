@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
-import { geminiCROSchema } from '@/types/cro'
+import { geminiCROSchema, CROAnalysis } from '@/types/cro'
 import { type DoclingDocument } from '@docling/docling-core';
 
 async function fetchConversion(url: string) {
@@ -14,18 +14,12 @@ async function fetchConversion(url: string) {
     throw new Error(`HTTP error! status: ${response.status}`)
   }
 
-  // Get the HTML content as text first
   const html = await response.text()
-  
-  // Now you can process the HTML with Docling
-  // But since you're using Docling, you might need to use their HTML processing function
-  // For now, let's just return the HTML and process it
   
   console.log('HTML content length:', html.length)
   return html
 }
 
-// Initialize Google AI with your API key
 const genAI = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
 })
@@ -34,7 +28,6 @@ async function scrapeWebpage(url: string): Promise<string> {
   try {
     const html = await fetchConversion(url)
     
-    // For now, let's do basic HTML cleaning since Docling might not be working as expected
     const textContent = html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Remove scripts
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')   // Remove styles
@@ -70,10 +63,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Scrape the webpage using Docling
     let pageContent: string
     try {
       pageContent = await scrapeWebpage(url)
+      console.log("PageContent aqui")
+      console.log(pageContent)
     } catch (scrapingError) {
       return NextResponse.json(
         { error: 'Failed to access webpage content' },
@@ -81,28 +75,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 3. Send content to Google Gemini
     try {
       const prompt = `Analyze this e-commerce webpage content and generate a CRO (Conversion Rate Optimization) report:
 
 WEBPAGE CONTENT:
 ${pageContent.substring(0, 8000)}${pageContent.length > 8000 ? '...' : ''}
 
-Please provide a comprehensive CRO analysis based on the content above.`
+Please provide a comprehensive CRO analysis based on the content above. Be succint and to the point.`
       
-      const result = await genAI.models.generateContent({
+      const geminiResult = await genAI.models.generateContent({
         model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-          responseSchema: geminiCROSchema
+          responseSchema: geminiCROSchema  // Use the static schema object
         }
       })
 
-      console.log(result)
+      console.log("Resultado aqui")
+      console.log(geminiResult)
       
-      const croAnalysis = result.text
+      const croAnalysis = geminiResult.text
 
+      console.log("CroAnalysis aqui")
       console.log(croAnalysis)
       
       // TODO: Store results in Supabase
