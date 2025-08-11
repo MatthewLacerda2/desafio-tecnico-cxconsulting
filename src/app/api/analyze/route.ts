@@ -132,7 +132,7 @@ Please provide a comprehensive CRO analysis based on the content above. Be succi
         if (error) {
           console.error('Supabase insert error:', error)
           return NextResponse.json(
-            { error: 'Failed to save analysis to database' },
+            { error: 'Failed to save analysis to database in error at line 135' },
             { status: 500 }
           )
         }
@@ -149,7 +149,7 @@ Please provide a comprehensive CRO analysis based on the content above. Be succi
       } catch (dbError) {
         console.error('Database error:', dbError)
         return NextResponse.json(
-          { error: 'Failed to save analysis to database' },
+          { error: 'Failed to save analysis to database in db error' },
           { status: 500 }
         )
       }

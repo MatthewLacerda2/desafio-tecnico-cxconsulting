@@ -7,7 +7,7 @@ interface Result {
   url: string
   dateGenerated: string
   summary: string
-  priority: 'low' | 'medium' | 'high'
+  improvementsSummary: string
 }
 
 export default function ResultsPage() {
@@ -15,45 +15,34 @@ export default function ResultsPage() {
   const [filteredResults, setFilteredResults] = useState<Result[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // TODO: Load results from API here
-    // For now, populate with sample data
-    const sampleResults: Result[] = [
-      {
-        rootUrl: 'example.com',
-        url: 'https://example.com/product-page-1',
-        dateGenerated: '2024-01-15',
-        summary: 'Mobile optimization needed for better conversion rates',
-        priority: 'high'
-      },
-      {
-        rootUrl: 'shop.com',
-        url: 'https://shop.com/category-page',
-        dateGenerated: '2024-01-14',
-        summary: 'Checkout flow improvements recommended',
-        priority: 'medium'
-      },
-      {
-        rootUrl: 'store.net',
-        url: 'https://store.net/homepage',
-        dateGenerated: '2024-01-13',
-        summary: 'Trust signals implementation for user confidence',
-        priority: 'low'
-      },
-      {
-        rootUrl: 'ecommerce.org',
-        url: 'https://ecommerce.org/product-detail',
-        dateGenerated: '2024-01-12',
-        summary: 'Navigation improvements for better user experience',
-        priority: 'medium'
-      }
-    ]
-    
-    setResults(sampleResults)
-    setFilteredResults(sampleResults)
-    setLoading(false)
+    fetchResults()
   }, [])
+
+  const fetchResults = async (filter: string = '') => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const params = filter ? `?filter=${encodeURIComponent(filter)}` : ''
+      const response = await fetch(`/api/results${params}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch results')
+      }
+      
+      const data = await response.json()
+      setResults(data.results)
+      setFilteredResults(data.results)
+    } catch (err) {
+      console.error('Error fetching results:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch results')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -62,20 +51,11 @@ export default function ResultsPage() {
       const filtered = results.filter(result => 
         result.rootUrl.toLowerCase().includes(searchTerm.toLowerCase()) ||
         result.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        result.priority.toLowerCase().includes(searchTerm.toLowerCase())
+        result.improvementsSummary.toLowerCase().includes(searchTerm.toLowerCase())
       )
       setFilteredResults(filtered)
     }
   }, [searchTerm, results])
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'low': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
 
   if (loading) {
     return (
@@ -83,6 +63,25 @@ export default function ResultsPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading results...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <p className="font-bold">Error</p>
+            <p>{error}</p>
+          </div>
+          <button
+            onClick={() => fetchResults()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     )
@@ -135,7 +134,7 @@ export default function ResultsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full URL</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Generated</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Summary</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Improvements Summary</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -153,10 +152,8 @@ export default function ResultsPage() {
                       <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
                         {result.summary}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(result.priority)}`}>
-                          {result.priority}
-                        </span>
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                        {result.improvementsSummary}
                       </td>
                     </tr>
                   ))}

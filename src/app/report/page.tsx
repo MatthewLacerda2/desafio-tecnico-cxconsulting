@@ -35,10 +35,11 @@ export default function ReportPage() {
 
         const data = await response.json()
         
-        // Parse the Gemini response (it's already structured JSON)
+        // The analysis is already a parsed object, no need to parse again
         let analysis: CROAnalysis
         try {
-          analysis = JSON.parse(data.analysis)
+          // Remove the JSON.parse since data.analysis is already an object
+          analysis = data.analysis
         } catch (parseError) {
           console.error('Failed to parse AI response:', parseError)
           throw new Error('Invalid analysis response format')
