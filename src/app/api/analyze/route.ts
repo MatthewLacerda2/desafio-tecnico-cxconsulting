@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
       console.log("PageContent aqui")
       console.log(pageContent)
     } catch (scrapingError) {
+      console.error('Scraping error:', scrapingError)
       return NextResponse.json(
         { error: 'Failed to access webpage content' },
         { status: 400 }
