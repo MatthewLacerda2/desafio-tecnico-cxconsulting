@@ -2,13 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-
-interface Improvement {
-  recommended_improvements: string
-  summary: string
-  priority: 'low' | 'medium' | 'high'
-  expected_impact: 'low' | 'medium' | 'high'
-}
+import { CROAnalysis, Improvement } from '@/types/cro'
 
 export default function ReportPage() {
   const searchParams = useSearchParams()
@@ -26,41 +20,63 @@ export default function ReportPage() {
   const [expectedTimeOnPage, setExpectedTimeOnPage] = useState<string>('')
   const [expectedCartAbandonRate, setExpectedCartAbandonRate] = useState<string>('')
   const [recommendationsSummary, setRecommendationsSummary] = useState<string>('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string>('')
 
   useEffect(() => {
-    // TODO: Load report data from API here
-    // For now, populate with sample data
-    setPageSummaryList('User experience optimization, Mobile responsiveness, Call-to-action placement, Trust signals implementation')
-    setEstimatedConversionRate('2.3%')
-    setBounceRate('68%')
-    setAverageTimeOnPage('1m 45s')
-    setCartAbandonRate('72%')
-    setImprovements([
-      {
-        recommended_improvements: 'Optimize checkout flow',
-        summary: 'Simplify the checkout process to reduce cart abandonment',
-        priority: 'high',
-        expected_impact: 'high'
-      },
-      {
-        recommended_improvements: 'Improve mobile navigation',
-        summary: 'Enhance mobile user experience for better engagement',
-        priority: 'medium',
-        expected_impact: 'medium'
-      },
-      {
-        recommended_improvements: 'Add trust badges',
-        summary: 'Include security and trust indicators to build confidence',
-        priority: 'low',
-        expected_impact: 'medium'
+    const analyzeUrl = async () => {
+      try {
+        setLoading(true)
+        setError('')
+        
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`Analysis failed: ${response.status}`)
+        }
+
+        const data = await response.json()
+        
+        // Parse the Gemini response (it's already structured JSON)
+        let analysis: CROAnalysis
+        try {
+          analysis = JSON.parse(data.analysis)
+        } catch (parseError) {
+          console.error('Failed to parse AI response:', parseError)
+          throw new Error('Invalid analysis response format')
+        }
+
+        // Update state with real data
+        setPageSummaryList(analysis.pageSummaryList)
+        setEstimatedConversionRate(analysis.currentMetrics.estimatedConversionRate)
+        setBounceRate(analysis.currentMetrics.bounceRate)
+        setAverageTimeOnPage(analysis.currentMetrics.averageTimeOnPage)
+        setCartAbandonRate(analysis.currentMetrics.cartAbandonRate)
+        setImprovements(analysis.improvements)
+        setExpectedConversionRate(analysis.expectedResults.expectedConversionRate)
+        setExpectedBounceRate(analysis.expectedResults.expectedBounceRate)
+        setExpectedTimeOnPage(analysis.expectedResults.expectedTimeOnPage)
+        setExpectedCartAbandonRate(analysis.expectedResults.expectedCartAbandonRate)
+        setRecommendationsSummary(analysis.recommendationsSummary)
+
+      } catch (error) {
+        console.error('Analysis error:', error)
+        setError(error instanceof Error ? error.message : 'Failed to analyze URL')
+      } finally {
+        setLoading(false)
       }
-    ])
-    setExpectedConversionRate('4.1%')
-    setExpectedBounceRate('52%')
-    setExpectedTimeOnPage('2m 30s')
-    setExpectedCartAbandonRate('58%')
-    setRecommendationsSummary('These improvements are expected to significantly increase conversion rates while reducing bounce and cart abandonment rates through better user experience and trust building.')
-  }, [])
+    }
+
+    if (url && url !== 'Unknown URL') {
+      analyzeUrl()
+    }
+  }, [url])
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -78,6 +94,36 @@ export default function ReportPage() {
       case 'low': return 'bg-green-100 text-green-800'
       default: return 'bg-gray-100 text-gray-800'
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Analyzing webpage...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <p className="font-medium">Analysis Failed</p>
+            <p className="text-sm">{error}</p>
+          </div>
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -14,18 +14,36 @@ async function fetchConversion(url: string) {
     throw new Error(`HTTP error! status: ${response.status}`)
   }
 
-  const result = (await response.json()) as DoclingDocument;
-
-  console.log(result)
-  return result
+  // Get the HTML content as text first
+  const html = await response.text()
+  
+  // Now you can process the HTML with Docling
+  // But since you're using Docling, you might need to use their HTML processing function
+  // For now, let's just return the HTML and process it
+  
+  console.log('HTML content length:', html.length)
+  return html
 }
 
 // Initialize Google AI with your API key
-const genAI = new GoogleGenAI({})
+const genAI = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY
+})
 
 async function scrapeWebpage(url: string): Promise<string> {
   try {
-    return (await fetchConversion(url)).texts?.[0]?.text as string
+    const html = await fetchConversion(url)
+    
+    // For now, let's do basic HTML cleaning since Docling might not be working as expected
+    const textContent = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Remove scripts
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')   // Remove styles
+      .replace(/<[^>]+>/g, ' ')                          // Remove HTML tags
+      .replace(/\s+/g, ' ')                              // Normalize whitespace
+      .trim()
+    
+    console.log('Cleaned text length:', textContent.length)
+    return textContent
   } catch (error) {
     console.error('Scraping error:', error)
     throw new Error('Failed to scrape webpage')
@@ -80,8 +98,12 @@ Please provide a comprehensive CRO analysis based on the content above.`
           responseSchema: geminiCROSchema
         }
       })
+
+      console.log(result)
       
       const croAnalysis = result.text
+
+      console.log(croAnalysis)
       
       // TODO: Store results in Supabase
       // TODO: Return analysis results
